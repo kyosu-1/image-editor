@@ -1,10 +1,16 @@
+if (!WebAssembly.instantiateStreaming) {
+    WebAssembly.instantiateStreaming = async (resp, importObject) => {
+        const source = await (await resp).arrayBuffer();
+        return await WebAssembly.instantiate(source, importObject);
+    };
+}
+const go = new Go();  // wasm_exec.js で定義されたGoオブジェクト
 let wasmModule;
 
-fetch('main.wasm')
-    .then(response => response.arrayBuffer())
-    .then(bytes => WebAssembly.instantiate(bytes))
-    .then(results => {
-        wasmModule = results.instance;
+WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject)
+    .then(result => {
+        wasmModule = result.instance;
+        go.run(wasmModule);  // wasm_exec.js のランタイムを起動
     });
 
 function loadImage() {
@@ -37,7 +43,7 @@ function getImageData() {
 function applyGrayscale() {
     const strength = document.getElementById('grayscale-strength').value;
     const imageData = getImageData();
-    const resultData = new Uint8Array(wasmModule.exports.applyGrayscale(imageData, strength));
+    const resultData = new Uint8Array(applyGrayscale(imageData, strength));
     renderImage(resultData);
 }
 
@@ -45,20 +51,20 @@ function resizeImage() {
     const newWidth = document.getElementById('width').value;
     const newHeight = document.getElementById('height').value;
     const imageData = getImageData();
-    const resultData = new Uint8Array(wasmModule.exports.resize(imageData, newWidth, newHeight));
+    const resultData = new Uint8Array(resize(imageData, newWidth, newHeight));
     renderImage(resultData);
 }
 
 function rotateImage() {
     const angle = document.getElementById('rotation-angle').value;
     const imageData = getImageData();
-    const resultData = new Uint8Array(wasmModule.exports.rotate(imageData, angle));
+    const resultData = new Uint8Array(rotate(imageData, angle));
     renderImage(resultData);
 }
 
 function flipHorizontal() {
     const imageData = getImageData();
-    const resultData = new Uint8Array(wasmModule.exports.flipHorizontal(imageData));
+    const resultData = new Uint8Array(flipHorizontal(imageData));
     renderImage(resultData);
 }
 
